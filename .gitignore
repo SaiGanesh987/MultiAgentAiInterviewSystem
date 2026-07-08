@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+
+tests
+interview_engine.py
+round_manager.py
+state_manager.py
+hello.py
+answer_bank.py
+difficulty_agent.py
+question_agent.py
+feedback_agent.py
