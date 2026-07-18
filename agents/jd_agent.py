@@ -2,37 +2,46 @@ from llm import llm
 
 
 class JDAgent:
+    """
+    Extracts required technical skills from a Job Description.
+    """
 
-    def extract_skills(self, jd):
+    def extract_skills(self, job_description: str) -> list[str]:
 
         prompt = f"""
 You are an expert Hiring Manager.
 
-Extract ONLY technical skills required for this Job Description.
+Extract ONLY the required technical skills from the following Job Description.
 
-Rules
+Instructions:
+- Extract programming languages.
+- Extract frameworks.
+- Extract libraries.
+- Extract databases.
+- Extract cloud technologies.
+- Extract AI/ML technologies.
+- Extract developer tools.
+- Ignore company information.
+- Ignore responsibilities.
+- Ignore qualifications unrelated to technical skills.
+- Ignore salary and benefits.
+- Remove duplicates.
+- Return ONLY a comma-separated list.
+- Do not explain anything.
 
-- Ignore company information
-- Ignore salary
-- Ignore responsibilities
-- Remove duplicates
-- Return ONLY comma separated skills.
+Job Description:
 
-Job Description
-
-{jd}
+{job_description}
 """
 
         response = llm.invoke(prompt)
 
         skills = response.content.split(",")
 
-        return [
-
-            skill.strip().lower()
-
-            for skill in skills
-
-            if skill.strip()
-
-        ]
+        return list(
+            {
+                skill.strip().lower()
+                for skill in skills
+                if skill.strip()
+            }
+        )

@@ -1,6 +1,6 @@
 from typing import TypedDict, List
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, START, END
 
 from agents.resume_agent import ResumeAgent
 from agents.jd_agent import JDAgent
@@ -9,22 +9,21 @@ from agents.hr_agent import HRAgent
 from agents.genai_agent import GenAIAgent
 from agents.judge_agent import JudgeAgent
 
+from memory.interview_memory import InterviewMemory
 
-# -----------------------------
-# Agents
-# -----------------------------
+
+memory = InterviewMemory()
 
 resume_agent = ResumeAgent()
 jd_agent = JDAgent()
-technical_agent = TechnicalInterviewAgent()
-hr_agent = HRAgent()
-genai_agent = GenAIAgent()
+
+technical_agent = TechnicalInterviewAgent(memory)
+hr_agent = HRAgent(memory)
+genai_agent = GenAIAgent(memory)
+
 judge_agent = JudgeAgent()
 
 
-# -----------------------------
-# Graph State
-# -----------------------------
 
 class InterviewState(TypedDict):
 
@@ -34,24 +33,19 @@ class InterviewState(TypedDict):
 
     resume_skills: List[str]
     jd_skills: List[str]
-
-    technical_ready: bool
-    hr_ready: bool
-    genai_required: bool
-
-    history: list
+    merged_skills: List[str]
 
     final_report: str
 
 
-# -----------------------------
-# Nodes
-# -----------------------------
+
 
 def resume_node(state):
 
     skills = resume_agent.extract_skills(
+
         state["resume"]
+
     )
 
     return {
@@ -63,10 +57,13 @@ def resume_node(state):
     }
 
 
+
 def jd_node(state):
 
     skills = jd_agent.extract_skills(
+
         state["job_description"]
+
     )
 
     return {
@@ -78,63 +75,90 @@ def jd_node(state):
     }
 
 
-def technical_node(state):
 
-    technical_agent.prepare_topics(
+def merge_skills_node(state):
 
-        state["resume_skills"],
+    merged = list(
 
-        state["jd_skills"]
+        set(
+
+            state["resume_skills"]
+
+            +
+
+            state["jd_skills"]
+
+        )
 
     )
+
+    technical_agent.prepare_topics(merged)
 
     return {
 
         **state,
 
-        "technical_ready": True
+        "merged_skills": merged
 
     }
+
+
+
+
+def technical_node(state):
+
+    technical_agent.conduct_interview(
+
+        answer_callback=state["answer_callback"]
+
+    )
+
+    return state
+
 
 
 def hr_node(state):
 
-    return {
+    hr_agent.conduct_interview(
 
-        **state,
+        answer_callback=state["answer_callback"]
 
-        "hr_ready": True
+    )
 
-    }
+    return state
+
+
 
 
 def route_genai(state):
 
     role = state["role"].lower()
 
-    ai_keywords = [
+    keywords = [
 
-        "machine learning",
+        "ai",
 
         "ml",
 
-        "ai",
+        "machine learning",
+
+        "deep learning",
 
         "genai",
 
         "llm",
 
-        "deep learning",
+        "nlp",
 
         "computer vision",
 
-        "nlp",
+        "data scientist",
 
-        "data scientist"
+        "artificial intelligence"
 
     ]
 
-    for keyword in ai_keywords:
+    for keyword in keywords:
 
         if keyword in role:
 
@@ -143,22 +167,25 @@ def route_genai(state):
     return "judge"
 
 
+
+
 def genai_node(state):
 
-    return {
+    genai_agent.conduct_interview(
 
-        **state,
+        answer_callback=state["answer_callback"]
 
-        "genai_required": True
+    )
 
-    }
+    return state
+
 
 
 def judge_node(state):
 
-    report = judge_agent.final_feedback(
+    report = judge_agent.generate_report(
 
-        state["history"]
+        memory
 
     )
 
@@ -171,15 +198,15 @@ def judge_node(state):
     }
 
 
-# -----------------------------
-# Build Graph
-# -----------------------------
+
 
 builder = StateGraph(InterviewState)
 
 builder.add_node("resume", resume_node)
 
 builder.add_node("jd", jd_node)
+
+builder.add_node("merge_skills", merge_skills_node)
 
 builder.add_node("technical", technical_node)
 
@@ -190,11 +217,13 @@ builder.add_node("genai", genai_node)
 builder.add_node("judge", judge_node)
 
 
-builder.set_entry_point("resume")
+builder.add_edge(START, "resume")
 
 builder.add_edge("resume", "jd")
 
-builder.add_edge("jd", "technical")
+builder.add_edge("jd", "merge_skills")
+
+builder.add_edge("merge_skills", "technical")
 
 builder.add_edge("technical", "hr")
 
@@ -218,4 +247,5 @@ builder.add_edge("genai", "judge")
 
 builder.add_edge("judge", END)
 
-graph = builder.compile()
+
+interview_graph = builder.compile()

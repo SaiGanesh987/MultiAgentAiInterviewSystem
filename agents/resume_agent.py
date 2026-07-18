@@ -2,21 +2,34 @@ from llm import llm
 
 
 class ResumeAgent:
+    """
+    Extracts technical skills from a candidate's resume.
+    """
 
-    def extract_skills(self, resume):
+    def extract_skills(self, resume: str) -> list[str]:
 
         prompt = f"""
 You are an expert Technical Recruiter.
 
-Extract ONLY the technical skills from the following resume.
+Your task is to extract ONLY the candidate's technical skills from the resume.
 
-Rules:
-- Ignore education
-- Ignore projects
-- Ignore certifications
-- Ignore soft skills
-- Remove duplicates
-- Return ONLY comma separated skills.
+Instructions:
+- Extract programming languages.
+- Extract frameworks.
+- Extract libraries.
+- Extract databases.
+- Extract cloud platforms.
+- Extract developer tools.
+- Extract AI/ML technologies.
+- Extract operating systems if mentioned.
+- Ignore education.
+- Ignore projects.
+- Ignore achievements.
+- Ignore certifications.
+- Ignore soft skills.
+- Remove duplicates.
+- Return ONLY a comma-separated list.
+- Do not explain anything.
 
 Resume:
 
@@ -27,12 +40,10 @@ Resume:
 
         skills = response.content.split(",")
 
-        return [
-
-            skill.strip().lower()
-
-            for skill in skills
-
-            if skill.strip()
-
-        ]
+        return list(
+            {
+                skill.strip().lower()
+                for skill in skills
+                if skill.strip()
+            }
+        )
